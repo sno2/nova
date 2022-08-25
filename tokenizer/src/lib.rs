@@ -33,6 +33,8 @@ pub enum TokenKind {
 		Equal,
 		EqualEqual,
 		EqualEqualEqual,
+		NotEqual,
+		NotEqualEqual,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -61,7 +63,9 @@ enum State {
     Minus,
     FwdSlash,
     Equal,
-		EqualEqual,
+	EqualEqual,
+	Bang,
+	NotEqual,
 
     Junk,
     JunkNewline,
@@ -141,8 +145,7 @@ impl<'a> TokenStream<'a> {
                         break;
                     }
                     b'!' => {
-                        kind = Bang;
-                        break;
+                        state = State::Bang;
                     }
                     b'^' => {
                         kind = Caret;
@@ -180,6 +183,25 @@ impl<'a> TokenStream<'a> {
 											panic!("Unknown character '{}'.", char::from(c));
 										},
                 },
+                State::Bang => match c {
+                    b'=' => state = State::NotEqual,
+                    _ => {
+                        kind = TokenKind::Bang;
+                        self.index -= 1;
+                        break;
+                    },
+                },
+                State::NotEqual => match c {
+                    b'=' => {
+                        kind = TokenKind::NotEqualEqual;
+                        break;
+                    },
+                    _ => {
+                        kind = TokenKind::NotEqual;
+                        self.index -= 1;
+                        break;
+                    },
+                },
 								State::Equal => match c {
 									b'=' => state = State::EqualEqual,
 									_ => {
@@ -193,7 +215,7 @@ impl<'a> TokenStream<'a> {
 										kind = EqualEqualEqual;
 										break;
 									},
-									_ => {
+						 			_ => {
 										kind = TokenKind::EqualEqual;
 										self.index -= 1;
 										break;
